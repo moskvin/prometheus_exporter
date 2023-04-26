@@ -11,8 +11,15 @@ class PrometheusExporter::Middleware
     @client = config[:client] || PrometheusExporter::Client.default
 
     if config[:instrument]
-      if defined? Redis::Client
-        MethodProfiler.patch(Redis::Client, [:call, :call_pipeline], :redis)
+      if defined?(RedisClient)
+        apply_redis_client_middleware!
+      end
+      if defined?(Redis::VERSION) && (Gem::Version.new(Redis::VERSION) >= Gem::Version.new('5.0.0'))
+        # redis 5 support handled via RedisClient
+      elsif defined? Redis::Client
+        MethodProfiler.patch(Redis::Client, [
+          :call, :call_pipeline
+        ], :redis, instrument: config[:instrument])
       end
       if defined? PG::Connection
         MethodProfiler.patch(PG::Connection, [
