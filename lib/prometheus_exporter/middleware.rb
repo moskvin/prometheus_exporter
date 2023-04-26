@@ -17,9 +17,7 @@ class PrometheusExporter::Middleware
       if defined?(Redis::VERSION) && (Gem::Version.new(Redis::VERSION) >= Gem::Version.new('5.0.0'))
         # redis 5 support handled via RedisClient
       elsif defined? Redis::Client
-        MethodProfiler.patch(Redis::Client, [
-          :call, :call_pipeline
-        ], :redis, instrument: config[:instrument])
+        MethodProfiler.patch(Redis::Client, [:call, :call_pipeline], :redis)
       end
       if defined? PG::Connection
         MethodProfiler.patch(PG::Connection, [
@@ -117,4 +115,11 @@ class PrometheusExporter::Middleware
 
   end
 
+  module RedisInstrumenter
+    MethodProfiler.define_methods_on_module(self, %w[call call_pipelined], "redis")
+  end
+
+  def apply_redis_client_middleware!
+    RedisClient.register(RedisInstrumenter)
+  end
 end
